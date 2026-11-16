@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>World Tension Reader</title>
+<meta name="description" content="Two daily readings of world tension from machine-coded news: unrest now, and how close countries are to crisis. Updated every morning.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='7' fill='%23c2410c'/></svg>">
+<style>
+  :root {
+    --bg: #faf9f6; --panel: #ffffff; --fg: #1d1d1b; --muted: #6b6b66; --line: #e4e2dc; --grid: #ecebe6;
+    --axis: #b8b6ae; --bad: #c2410c; --warn: #b7791f; --ok: #2f7d4f; --crit: #c2410c; --soft: #9a9890;
+    --serif: Georgia, "Times New Roman", serif; --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #161614; --panel: #1f1f1c; --fg: #ecebe6; --muted: #a3a29b; --line: #34332f; --grid: #2a2926;
+      --axis: #5a5953; --bad: #f08a5d; --warn: #e0b04f; --ok: #6cc08b; --crit: #f08a5d; --soft: #77766f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #161614; --panel: #1f1f1c; --fg: #ecebe6; --muted: #a3a29b; --line: #34332f; --grid: #2a2926;
+    --axis: #5a5953; --bad: #f08a5d; --warn: #e0b04f; --ok: #6cc08b; --crit: #f08a5d; --soft: #77766f;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--sans); }
+  .wt { max-width: 980px; margin: 0 auto; padding: 32px 16px 64px; display: flex; flex-direction: column; gap: 36px; }
+  h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(2rem, 6vw, 2.8rem); margin: 0; }
+  h2 { font-size: 1.15rem; font-weight: 600; margin: 0; }
+  p { margin: 0; line-height: 1.55; max-width: 68ch; }
+  .muted { color: var(--muted); font-size: .88rem; }
+  .head, .sec { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .lead { font-size: 1.12rem; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .lab { font-size: .78rem; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+  .big { font-family: var(--serif); font-size: 3.2rem; line-height: 1; font-variant-numeric: tabular-nums; }
+  .big small { font-size: 1rem; color: var(--muted); font-family: var(--sans); }
+  .meter { height: 8px; border-radius: 4px; background: var(--grid); position: relative; overflow: hidden; }
+  .meter i { position: absolute; inset: 0 auto 0 0; border-radius: 4px; }
+  .chg.up { color: var(--bad); } .chg.down { color: var(--ok); } .chg.flat { color: var(--muted); }
+  .chart { position: relative; min-height: 240px; width: 100%; }
+  .chart svg text { fill: var(--muted); font-size: 11px; }
+  .tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 4px 14px rgba(0,0,0,.12); border-radius: 8px; padding: 6px 8px; font-size: .8rem; white-space: nowrap; z-index: 2; }
+  .tw { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: .92rem; font-variant-numeric: tabular-nums; }
+  th { text-align: left; font-weight: 600; color: var(--muted); font-size: .78rem; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  td a { color: var(--fg); }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: .78rem; border: 1px solid var(--line); white-space: nowrap; }
+  .pill.c { color: var(--bad); } .pill.u { color: var(--warn); }
+  .lvl { display: inline-block; width: 48px; height: 6px; border-radius: 3px; background: var(--grid); position: relative; vertical-align: middle; margin-right: 6px; overflow: hidden; }
+  .lvl i { position: absolute; inset: 0 auto 0 0; }
+  details summary { cursor: pointer; color: var(--muted); }
+  details ul { margin: 10px 0 0; padding-left: 1.2em; line-height: 1.55; max-width: 72ch; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: .8rem; color: var(--muted); }
+  .legend span::before { content: ""; display: inline-block; width: 10px; height: 3px; margin-right: 6px; vertical-align: middle; background: var(--sw); }
+  footer { color: var(--muted); font-size: .8rem; line-height: 1.6; border-top: 1px solid var(--line); padding-top: 16px; }
+  footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+<main class="wt">
+  <div class="head">
+    <h1>World Tension Reader</h1>
+    <p class="lead">Unrest is <b id="u-word">—</b> at <b id="u-score">—</b> out of 100, and the crisis reading is <b id="c-word">—</b> at <b id="c-score">—</b>. News up to <span id="asof">—</span>.</p>
+    <p class="muted">Both scores compare the last 3 days with the year before: 50 is an ordinary day, 90 means tenser than 9 days in 10. Read from machine-coded world news (GDELT), so single headlines can be misread. Updated every morning.</p>
+  </div>
+
+  <div class="tiles">
+    <div class="tile">
+      <span class="lab">Unrest now</span>
+      <span class="big"><span id="u-big">—</span><small> / 100</small></span>
+      <div class="meter" id="u-meter"></div>
+      <span class="muted"><span id="u-chg">—</span> vs 7 days ago</span>
+      <span class="muted">Fighting, bombings, attacks and protests, as a share of all news</span>
+    </div>
+    <div class="tile">
+      <span class="lab">Crisis closeness</span>
+      <span class="big"><span id="c-big">—</span><small> / 100</small></span>
+      <div class="meter" id="c-meter"></div>
+      <span class="muted"><span id="c-chg">—</span> vs 7 days ago</span>
+      <span class="muted">Countries threatening, posturing at or fighting other countries</span>
+    </div>
+  </div>
+
+  <section class="sec">
+    <h2>The last year, day by day</h2>
+    <div class="legend"><span style="--sw: var(--crit)">Crisis closeness</span><span style="--sw: var(--warn)">Unrest</span></div>
+    <div class="chart" id="score-chart"></div>
+  </section>
+
+  <section class="sec">
+    <h2>Why it moved: biggest jumps on the latest day</h2>
+    <p class="muted">Countries whose share of the news rose to at least 1.5 times their own normal for the last 30 days, backed by 10 or more different articles. One example story each.</p>
+    <div class="tw"><table>
+      <thead><tr><th>Reading</th><th>Country</th><th>What</th><th>Example story</th><th class="num">vs normal</th></tr></thead>
+      <tbody id="movers-body"></tbody>
+    </table></div>
+  </section>
+
+  <section class="sec">
+    <h2>Where the unrest news is</h2>
+    <p class="muted">Countries with the biggest share of the latest day's unrest news. The bar compares the day with that country's own last 90 days.</p>
+    <div class="tw"><table>
+      <thead><tr><th>Country</th><th class="num">Share of all news</th><th class="num">Its 30-day normal</th><th>Vs its last 90 days (0–100)</th><th class="num">Crisis share</th></tr></thead>
+      <tbody id="countries-body"></tbody>
+    </table></div>
+  </section>
+
+  <section class="sec">
+    <h2>The long view since 1985</h2>
+    <p class="muted">The Geopolitical Risk Index by Caldara and Iacoviello, counted from newspaper articles about wars, terrorism and military threats. 100 is the 1985 to 2019 average. Monthly averages.</p>
+    <div class="chart" id="gpr-long"></div>
+  </section>
+
+  <section class="sec">
+    <h2>The same index, last six months</h2>
+    <p class="muted">Daily, with a 7-day average.</p>
+    <div class="legend"><span style="--sw: var(--soft)">Daily</span><span style="--sw: var(--crit)">7-day average</span></div>
+    <div class="chart" id="gpr-short"></div>
+  </section>
+
+  <details>
+    <summary>How the scores are worked out</summary>
+    <ul>
+      <li>Every day GDELT machine-reads news worldwide and codes each story's main event: who did what to whom, where.</li>
+      <li>Unrest is the share of that day's articles about fighting, bombings, assaults, mass violence or protests.</li>
+      <li>Crisis closeness is the share about one country threatening military force, posturing, fighting or committing mass violence against a different country.</li>
+      <li>Shares, not counts, so a quiet Sunday or a big sports day doesn't fake calm.</li>
+      <li>Each score is the 3-day average ranked against the previous 365 days. It says how today compares with the past year, not whether the world is safe.</li>
+      <li>Machine coding makes mistakes, such as ships counted under their flag country. The example stories let you check.</li>
+      <li>The script that builds the numbers is <a href="daily.py">daily.py</a>; the numbers themselves are in <a href="data/scores.json">data/</a>.</li>
+    </ul>
+  </details>
+
+  <footer>
+    Data: <a href="https://www.gdeltproject.org/" rel="noopener">The GDELT Project</a> event files; <a href="https://www.matteoiacoviello.com/gpr.htm" rel="noopener">Geopolitical Risk Index</a> (Caldara and Iacoviello). Not advice of any kind.
+  </footer>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+(async function () {
+  const $ = (id) => document.getElementById(id);
+  const fmtDay = d3.utcFormat('%-d %b %Y'), parseDay = d3.utcParse('%Y-%m-%d');
+  const signed = (v) => (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(v);
+  const word = (v) => v == null ? '—' : v >= 90 ? 'very high' : v >= 75 ? 'higher than usual' : v > 25 ? 'about usual' : v > 10 ? 'lower than usual' : 'very low';
+  const color = (v) => v >= 75 ? 'var(--bad)' : v > 25 ? 'var(--warn)' : 'var(--ok)';
+  const load = (n) => fetch('data/' + n + '.json', { cache: 'no-cache' }).then((r) => r.json()).then((j) => j.rows);
+
+  let D;
+  try {
+    const [scores, movers, countries, gm, gr] = await Promise.all(['scores', 'movers', 'countries', 'gpr_monthly', 'gpr_recent'].map(load));
+    D = { scores: scores.filter((r) => r.unrest_score != null), movers, countries, gm, gr };
+  } catch (e) { $('asof').textContent = 'data failed to load'; return; }
+
+  function line(el, rows, o) {
+    el.replaceChildren();
+    const W = Math.max(280, el.clientWidth), H = 240;
+    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', o.aria);
+    const allY = rows.flatMap((r) => o.series.map((s) => r[s.key])).filter((v) => v != null);
+    const y = d3.scaleLinear().domain([0, d3.max(allY.concat(o.ref ?? 0)) * 1.05]).nice();
+    const probe = svg.append('text').text(d3.max(y.ticks(5), (t) => String(t)));
+    const ml = (probe.node().getComputedTextLength() || 24) + 10; probe.remove();
+    const m = { l: ml, r: 12, t: 10, b: 24 };
+    const x = d3.scaleUtc().domain(d3.extent(rows, o.x)).range([m.l, W - m.r]);
+    y.range([H - m.b, m.t]);
+    const g = svg.append('g');
+    g.append('g').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(W - m.l - m.r)))
+      .call((a) => a.select('.domain').remove()).call((a) => a.selectAll('line').style('stroke', 'var(--grid)'));
+    g.append('g').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).ticks(Math.max(2, Math.floor(W / 110))).tickFormat(o.fmtX))
+      .call((a) => a.selectAll('.domain, line').style('stroke', 'var(--axis)'));
+    if (o.ref != null) {
+      g.append('line').attr('x1', m.l).attr('x2', W - m.r).attr('y1', y(o.ref)).attr('y2', y(o.ref)).style('stroke', 'var(--axis)').style('stroke-dasharray', '4 3');
+      g.append('text').attr('x', W - m.r).attr('y', y(o.ref) - 4).attr('text-anchor', 'end').text(o.refLabel);
+    }
+    for (const s of o.series) {
+      g.append('path').datum(rows).attr('d', d3.line().defined((r) => r[s.key] != null).x((r) => x(o.x(r))).y((r) => y(r[s.key])))
+        .style('fill', 'none').style('stroke', s.color).style('stroke-width', s.width || 1.6);
+      const last = [...rows].reverse().find((r) => r[s.key] != null);
+      if (last) g.append('circle').attr('cx', x(o.x(last))).attr('cy', y(last[s.key])).attr('r', 3).style('fill', s.color);
+    }
+    const tip = d3.select(el).append('div').attr('class', 'tip').attr('hidden', '');
+    const vl = g.append('line').attr('y1', m.t).attr('y2', H - m.b).style('stroke', 'var(--axis)').style('opacity', 0);
+    const bis = d3.bisector(o.x).center;
+    svg.append('rect').attr('x', m.l).attr('y', m.t).attr('width', W - m.l - m.r).attr('height', H - m.t - m.b).style('fill', 'transparent')
+      .on('pointermove', (ev) => {
+        const r = rows[bis(rows, x.invert(d3.pointer(ev)[0]))]; if (!r) return;
+        vl.attr('x1', x(o.x(r))).attr('x2', x(o.x(r))).style('opacity', 1);
+        tip.attr('hidden', null).text(o.tip(r));
+        const left = x(o.x(r)) * el.clientWidth / W, right = left > el.clientWidth / 2;
+        tip.style('top', '4px').style('left', right ? null : `${left + 8}px`).style('right', right ? `${el.clientWidth - left + 8}px` : null);
+      })
+      .on('pointerleave', () => { tip.attr('hidden', ''); vl.style('opacity', 0); });
+  }
+
+  function drawAll() {
+    const s = D.scores, a = s[s.length - 1], b = s[Math.max(0, s.length - 8)];
+    $('u-word').textContent = word(a.unrest_score); $('c-word').textContent = word(a.crisis_score);
+    $('u-score').textContent = $('u-big').textContent = a.unrest_score;
+    $('c-score').textContent = $('c-big').textContent = a.crisis_score;
+    $('asof').textContent = fmtDay(parseDay(a.date));
+    for (const [id, k] of [['u', 'unrest_score'], ['c', 'crisis_score']]) {
+      const i = document.createElement('i'); i.style.width = a[k] + '%'; i.style.background = color(a[k]);
+      $(id + '-meter').replaceChildren(i);
+      const v = a[k] - b[k], el = $(id + '-chg');
+      el.textContent = signed(v) + ' points'; el.className = 'chg ' + (v > 3 ? 'up' : v < -3 ? 'down' : 'flat');
+    }
+    line($('score-chart'), s.slice(-365), {
+      x: (r) => parseDay(r.date), fmtX: d3.utcFormat('%b %y'), ref: 50, refLabel: 'ordinary day',
+      aria: 'Line chart of the unrest and crisis scores for the last year',
+      series: [{ key: 'unrest_score', color: 'var(--warn)' }, { key: 'crisis_score', color: 'var(--crit)', width: 2 }],
+      tip: (r) => `${fmtDay(parseDay(r.date))}: crisis ${r.crisis_score}, unrest ${r.unrest_score}`,
+    });
+    const pm = d3.utcParse('%Y-%m');
+    line($('gpr-long'), D.gm, {
+      x: (r) => pm(r.month), fmtX: d3.utcFormat('%Y'), ref: 100, refLabel: '1985–2019 average',
+      aria: 'Line chart of the monthly Geopolitical Risk Index since 1985',
+      series: [{ key: 'gpr', color: 'var(--crit)' }], tip: (r) => `${d3.utcFormat('%b %Y')(pm(r.month))}: ${r.gpr}`,
+    });
+    line($('gpr-short'), D.gr, {
+      x: (r) => parseDay(r.date), fmtX: d3.utcFormat('%-d %b'), ref: 100, refLabel: '1985–2019 average',
+      aria: 'Line chart of the daily Geopolitical Risk Index for the last six months',
+      series: [{ key: 'gpr', color: 'var(--soft)', width: 1 }, { key: 'gpr_ma7', color: 'var(--crit)', width: 2 }],
+      tip: (r) => `${fmtDay(parseDay(r.date))}: ${r.gpr} (7-day ${r.gpr_ma7})`,
+    });
+  }
+
+  const mb = d3.select('#movers-body');
+  if (!D.movers.length) mb.append('tr').append('td').attr('colspan', 5).attr('class', 'muted').text('No country jumped above its normal on the latest day.');
+  else {
+    const tr = mb.selectAll('tr').data(D.movers).join('tr');
+    tr.append('td').append('span').attr('class', (r) => 'pill ' + (r.kind === 'Crisis' ? 'c' : 'u')).text((r) => r.kind);
+    tr.append('td').text((r) => r.country);
+    tr.append('td').text((r) => r.what);
+    tr.append('td').append('a').attr('href', (r) => /^https?:/.test(r.link) ? r.link : null).attr('target', '_blank').attr('rel', 'noopener noreferrer nofollow').text((r) => r.headline);
+    tr.append('td').attr('class', 'num').text((r) => r.ratio == null ? 'new' : r.ratio + '×');
+  }
+  const ct = d3.select('#countries-body').selectAll('tr').data(D.countries).join('tr');
+  ct.append('td').text((r) => r.country);
+  ct.append('td').attr('class', 'num').text((r) => r.unrest_share.toFixed(2) + '%');
+  ct.append('td').attr('class', 'num').text((r) => r.unrest_avg30.toFixed(2) + '%');
+  const lv = ct.append('td');
+  lv.append('span').attr('class', 'lvl').append('i').style('width', (r) => (r.level_90d ?? 0) + '%').style('background', (r) => color(r.level_90d ?? 0));
+  lv.append('span').text((r) => r.level_90d ?? '—');
+  ct.append('td').attr('class', 'num').text((r) => r.crisis_share.toFixed(2) + '%');
+
+  drawAll();
+  let t; addEventListener('resize', () => { clearTimeout(t); t = setTimeout(drawAll, 150); });
+})();
+</script>
+</body>
+</html>
